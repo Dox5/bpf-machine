@@ -43,6 +43,7 @@ packages:
 #
 extra-deps:
 - hspec-2.7.4
+- vector-0.12.1.2
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

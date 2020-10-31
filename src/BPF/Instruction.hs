@@ -2,7 +2,11 @@ module BPF.Instruction where
 
 import Data.Word
 
-data Operand = Immediate Word32 | Accumulator | XRegister
+data Operand =
+  Accumulator |
+  ByteOffset Int |
+  Immediate Word32 |
+  XRegister
 
 data Instruction = 
   Ret Operand
