@@ -44,6 +44,9 @@ packages:
 extra-deps:
 - hspec-2.7.4
 - vector-0.12.1.2
+- extensible-0.8.1
+- incremental-0.3.1
+- membership-0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

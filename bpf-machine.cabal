@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9bb0b7d8090d6d141da17efb9868b52bf7537f973526a6acdcfbdc35741fd534
+-- hash: f7bb0bb6259b52e18733498f24f3d82f3f273a97453631fff80e27c2eebdd40d
 
 name:           bpf-machine
 version:        0.1.0.0
@@ -28,7 +28,9 @@ source-repository head
 library
   exposed-modules:
       BPF
+      BPF.Executor
       BPF.Instruction
+      BPF.OperandEval
       BPF.Packet
       BPF.VirtualMachine
   other-modules:
@@ -37,6 +39,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , extensible >=0.8 && <1
     , mtl >=2.2 && <3
     , vector >=0.12 && <1
   default-language: Haskell2010
@@ -51,6 +54,7 @@ executable bpf-machine-exe
   build-depends:
       base >=4.7 && <5
     , bpf-machine
+    , extensible >=0.8 && <1
     , mtl >=2.2 && <3
     , vector >=0.12 && <1
   default-language: Haskell2010
@@ -59,6 +63,7 @@ test-suite bpf-machine-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      OperandEvalSpec
       VirtualMachineSpec
       Paths_bpf_machine
   hs-source-dirs:
@@ -67,6 +72,7 @@ test-suite bpf-machine-test
   build-depends:
       base >=4.7 && <5
     , bpf-machine
+    , extensible >=0.8 && <1
     , hspec >=2.7 && <3
     , mtl >=2.2 && <3
     , vector >=0.12 && <1

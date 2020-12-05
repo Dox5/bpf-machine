@@ -6,6 +6,11 @@ module BPF (
   
   Result,
 
+  ImmediateOperand (Immediate),
+  AccumulatorOperand (Accumulator),
+  ByteOffsetOperand (ByteOffset),
+  XRegisterOperand (XRegister),
+
   Instruction (
     Ret,
     Ld,
@@ -13,17 +18,11 @@ module BPF (
     Add
   ),
 
-  Operand (
-    Accumulator,
-    ByteOffset,
-    Immediate,
-    XRegister
-  ),
-
-
   makeMachine,
+  mkOperand,
   run
 ) where
 
-import BPF.VirtualMachine
+import BPF.Executor
 import BPF.Instruction
+import BPF.VirtualMachine
