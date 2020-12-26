@@ -8,6 +8,7 @@ module BPF.OperandEval where
 import BPF.Instruction (
     AccumulatorOperand,
     ByteOffsetOperand (ByteOffset),
+    ByteXOffsetOperand (ByteXOffset),
     ImmediateOperand (Immediate),
     XRegisterOperand,
 
@@ -45,6 +46,15 @@ instance Operand32 ByteOffsetOperand where
     case sliceAsWord d 4 offset of
       (Nothing) -> Right $ AccessOutOfBounds (instPtr m) offset
       (Just v)   -> Left v
+
+instance Operand32 ByteXOffsetOperand where
+  evaluateOperand (m, d) (ByteXOffset k) =
+    let
+      offset :: Int
+      offset = fromIntegral $ fromIntegral k + (xRegister m)
+    in case sliceAsWord d 4 offset of
+         (Nothing) -> Right $ AccessOutOfBounds (instPtr m) offset
+         (Just v) -> Left v
 
 instance Operand32 ImmediateOperand where
   evaluateOperand _ (Immediate v) = Left v

@@ -17,6 +17,9 @@ data AccumulatorOperand = Accumulator
 data ByteOffsetOperand  = ByteOffset Int
   deriving (Show)
 
+data ByteXOffsetOperand = ByteXOffset Int
+  deriving (Show)
+
 data ImmediateOperand   = Immediate Word32
   deriving (Show)
 

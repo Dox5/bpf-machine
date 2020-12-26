@@ -14,6 +14,7 @@ import BPF.VirtualMachine (
 import BPF.Instruction (
     AccumulatorOperand(Accumulator),
     ByteOffsetOperand(ByteOffset),
+    ByteXOffsetOperand(ByteXOffset),
     ImmediateOperand(Immediate),
     XRegisterOperand(XRegister),
   )
@@ -22,7 +23,7 @@ import BPF.Packet (PacketData)
 
 import qualified Data.Vector as Vector
 
-import Data.Word ()
+import Data.Word (Word32)
 
 import Test.Hspec
 
@@ -41,62 +42,99 @@ noProgram =  []
 basicMachine :: Machine
 basicMachine = makeMachine noProgram
 
-basicExecutionState :: ExecutionState
-basicExecutionState = (basicMachine, Vector.empty)
-
-executionState :: (ExecutionState -> ExecutionState) -> ExecutionState
-executionState f = f basicExecutionState
+executionState :: ExecutionState
+executionState = (basicMachine, Vector.empty)
 
 errorIs :: ExecutionError -> Either a ExecutionError -> Bool
 errorIs expected = either (\_ -> False) (\e -> e == expected)
+
+setX :: Word32 -> ExecutionState -> ExecutionState
+setX x (m, d) = (m{xRegister = x}, d)
+
+setAccum :: Word32 -> ExecutionState -> ExecutionState
+setAccum a (m, d) = (m{accum = a}, d)
+
+setIotaData :: Int -> ExecutionState -> ExecutionState
+setIotaData c (m, _) = (m, iotaBytes c)
+
+setIP :: Int -> ExecutionState -> ExecutionState
+setIP ip (m, d) = (m{instPtr = ip}, d)
 
 spec :: Spec
 spec = do
   describe "AccumulatorOperand" $ do
     context "32bit word" $
       it "should return the value of the accumulator [181]" $
-        evaluateOperand (executionState (\(m, d) -> (m{accum = 181}, d))) (Accumulator)
+        evaluateOperand (setAccum 181 $ executionState) (Accumulator)
           `shouldSatisfy` evaluationResult (fromInteger 181)
+
+  describe "ByteXOffsetOperand" $ do
+    context "32bit word" $ do
+      context "valid bytes" $ do
+          it "should return word when all bytes valid at offset 0 (x = 0, k = 0) [0x01020304]" $
+            evaluateOperand (setIotaData 4 $ executionState) (ByteXOffset 0)
+              `shouldSatisfy` evaluationResult (fromInteger 0x01020304)
+
+          it "should return word when all bytes valid at offset 3 (x = 2, k = 1) [0x02030405]" $
+            evaluateOperand (setX 2 . setIotaData 8 $ executionState) (ByteXOffset 1)
+              `shouldSatisfy` evaluationResult (fromInteger 0x04050607)
+
+      context "invalid bytes" $ do
+        it "should return ExecutionError when no bytes valid at offset 0 (x = 0, k = 0)" $
+          evaluateOperand executionState (ByteXOffset 0)
+            `shouldSatisfy` evaluationError
+
+        it "should return ExecutionError when no bytes valid at offset 8 (x = 5, k = 3)" $
+          evaluateOperand (setX 5 $ executionState) (ByteXOffset 3)
+            `shouldSatisfy` evaluationError
+
+        it "should return ExecutionError when only one byte valid at offset" $
+          evaluateOperand (setX 2 . setIotaData 4 $ executionState) (ByteXOffset 1)
+            `shouldSatisfy` evaluationError
+
+        it "should return AccessOutOfBounds with IP [32] and offset [5] set" $
+          evaluateOperand (setX 1 . setIP 32 $ executionState) (ByteXOffset(4))
+            `shouldSatisfy`
+              errorIs (AccessOutOfBounds 32 5)
 
   describe "ByteOffsetOperand" $ do
     context "32bit word" $ do
       context "valid bytes" $ do
           it "should return word when all bytes valid at offset 0 [0x01020304]" $
-            evaluateOperand (executionState (\(m, _) -> (m, iotaBytes 4))) (ByteOffset 0)
+            evaluateOperand (setIotaData 4 $ executionState) (ByteOffset 0)
               `shouldSatisfy` evaluationResult (fromInteger 0x01020304)
 
           it "should return word when all bytes valid at offset 1 [0x02030405]" $
-            evaluateOperand (executionState (\(m, _) -> (m, iotaBytes 5))) (ByteOffset 1)
+            evaluateOperand (setIotaData 5 $ executionState) (ByteOffset 1)
               `shouldSatisfy` evaluationResult (fromInteger 0x02030405)
 
       context "invalid bytes" $ do
         it "should return ExecutionError when no bytes valid at offset 0" $
-          evaluateOperand basicExecutionState (ByteOffset 0)
+          evaluateOperand executionState (ByteOffset 0)
             `shouldSatisfy` evaluationError
 
         it "should return ExecutionError when no bytes valid at offset 1" $
-          evaluateOperand basicExecutionState (ByteOffset 1)
+          evaluateOperand executionState (ByteOffset 1)
             `shouldSatisfy` evaluationError
 
         it "should return ExecutionError when only one byte valid at offset" $
-          evaluateOperand (executionState (\(m, _) -> (m, iotaBytes 3))) (ByteOffset 1)
+          evaluateOperand (setIotaData 3 $ executionState) (ByteOffset 2)
             `shouldSatisfy` evaluationError
 
         it "should return AccessOutOfBounds with IP [32] and offset [4] set" $
-          evaluateOperand (executionState
-              (\(m, d) -> (m{instPtr = 32}, d)))
-              (ByteOffset(4))
+          evaluateOperand (setIP 32 $ executionState) (ByteOffset(4))
             `shouldSatisfy`
               errorIs (AccessOutOfBounds 32 4)
+
   
   describe "ImmediateOperand" $ do
     context "32bit word" $
       it "should return the immediate value [1001]" $
-        evaluateOperand basicExecutionState (Immediate 1001)
+        evaluateOperand executionState (Immediate 1001)
           `shouldSatisfy` evaluationResult (fromInteger 1001)
 
   describe "XRegisterOperand" $ do
     context "32bit word" $
       it "should return the value of the accumulator [999]" $
-        evaluateOperand (executionState (\(m, p) -> (m{xRegister = 999}, p))) (XRegister)
+        evaluateOperand (setX 999 $ executionState) (XRegister)
           `shouldSatisfy` evaluationResult (fromInteger 999)
