@@ -10,6 +10,7 @@ import BPF.Instruction (
     ByteOffsetOperand (ByteOffset),
     ByteXOffsetOperand (ByteXOffset),
     ImmediateOperand (Immediate),
+    MemoryBankOperand (),
     XRegisterOperand,
 
   )
@@ -38,8 +39,8 @@ import Data.Proxy
 class Operand32 op where
   evaluateOperand :: ExecutionState -> op -> Either Word32 ExecutionError
 
-instance Operand32 AccumulatorOperand where
-  evaluateOperand (m, _) _ = Left $ accum m
+instance Operand32 XRegisterOperand where
+  evaluateOperand (m, _) _ = Left $ xRegister m
 
 instance Operand32 ByteOffsetOperand where
   evaluateOperand (m, d) (ByteOffset offset) = 
@@ -48,19 +49,21 @@ instance Operand32 ByteOffsetOperand where
       (Just v)   -> Left v
 
 instance Operand32 ByteXOffsetOperand where
-  evaluateOperand (m, d) (ByteXOffset k) =
+  evaluateOperand state@(m, _) (ByteXOffset k) =
     let
       offset :: Int
       offset = fromIntegral $ fromIntegral k + (xRegister m)
-    in case sliceAsWord d 4 offset of
-         (Nothing) -> Right $ AccessOutOfBounds (instPtr m) offset
-         (Just v) -> Left v
+    in  evaluateOperand state (ByteOffset offset)
+
+instance Operand32 MemoryBankOperand where
+  evaluateOperand _ _ = Left 0
 
 instance Operand32 ImmediateOperand where
   evaluateOperand _ (Immediate v) = Left v
 
-instance Operand32 XRegisterOperand where
-  evaluateOperand (m, _) _ = Left $ xRegister m
+instance Operand32 AccumulatorOperand where
+  evaluateOperand (m, _) _ = Left $ accum m
+
 
 
 doEvaluate32 :: Forall Operand32 xs => ExecutionState ->  xs :/ Identity -> Either Word32 ExecutionError
